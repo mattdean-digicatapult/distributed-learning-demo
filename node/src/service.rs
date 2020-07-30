@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
-use node_template_runtime::{self, Block, RuntimeApi};
+use distributed_learning_runtime::{self, Block, RuntimeApi};
 use sc_service::{error::Error as ServiceError, Configuration, ServiceComponents, TaskManager};
 use sp_inherents::InherentDataProviders;
 use sc_executor::native_executor_instance;
@@ -13,11 +13,13 @@ use sc_finality_grandpa::{
 	FinalityProofProvider as GrandpaFinalityProofProvider, StorageAndProofProvider, SharedVoterState,
 };
 
+use ml_model_tracker_rpc::{MlModelTracker, MlModelTrackerApi};
+
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	node_template_runtime::api::dispatch,
-	node_template_runtime::native_version,
+	distributed_learning_runtime::api::dispatch,
+	distributed_learning_runtime::native_version,
 );
 
 type FullClient = sc_service::TFullClient<Block, RuntimeApi, Executor>;
@@ -29,7 +31,7 @@ pub fn new_full_params(config: Configuration) -> Result<(
 		Block, FullClient,
 		sc_consensus_aura::AuraImportQueue<Block, FullClient>,
 		sc_transaction_pool::FullPool<Block, FullClient>,
-		(), FullBackend,
+		jsonrpc_core::IoHandler<sc_rpc::Metadata>, FullBackend,
 	>,
 	FullSelectChain,
 	sp_inherents::InherentDataProviders,
@@ -74,10 +76,25 @@ pub fn new_full_params(config: Configuration) -> Result<(
 		config.prometheus_registry(),
 	)?;
 
+	let rpc_extensions_builder = {
+		let client = client.clone();
+
+		let rpc_extensions_builder = Box::new(move |_| {
+			let mut io = jsonrpc_core::IoHandler::default();
+			io.extend_with(MlModelTrackerApi::to_delegate(
+				MlModelTracker::new(client.clone()),
+			));
+
+			io
+		});
+
+		rpc_extensions_builder
+	};
+
 	let provider = client.clone() as Arc<dyn StorageAndProofProvider<_, _>>;
 	let finality_proof_provider =
 		Arc::new(GrandpaFinalityProofProvider::new(backend.clone(), provider));
-	
+
 	let params = sc_service::ServiceParams {
 		backend, client, import_queue, keystore, task_manager, transaction_pool,
 		config,
@@ -86,7 +103,7 @@ pub fn new_full_params(config: Configuration) -> Result<(
 		finality_proof_provider: Some(finality_proof_provider),
 		on_demand: None,
 		remote_blockchain: None,
-		rpc_extensions_builder: Box::new(|_| ()),
+		rpc_extensions_builder: rpc_extensions_builder,
 	};
 
 	Ok((
@@ -96,7 +113,7 @@ pub fn new_full_params(config: Configuration) -> Result<(
 }
 
 /// Builds a new service for a full client.
-pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {	
+pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	let (
 		params, select_chain, inherent_data_providers,
 		block_import, grandpa_link,
@@ -210,7 +227,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 pub fn new_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 	let (client, backend, keystore, task_manager, on_demand) =
 		sc_service::new_light_parts::<Block, RuntimeApi, Executor>(&config)?;
-	
+
 	let transaction_pool_api = Arc::new(sc_transaction_pool::LightChainApi::new(
 		client.clone(), on_demand.clone(),
 	));
@@ -243,7 +260,7 @@ pub fn new_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 	let finality_proof_provider =
 		Arc::new(GrandpaFinalityProofProvider::new(backend.clone(), client.clone() as Arc<_>));
 
-	sc_service::build(sc_service::ServiceParams {	
+	sc_service::build(sc_service::ServiceParams {
 		block_announce_validator_builder: None,
 		finality_proof_request_builder: Some(finality_proof_request_builder),
 		finality_proof_provider: Some(finality_proof_provider),

@@ -1,12 +1,12 @@
 [package]
 authors = ['Matthew Dean <https://github.com/mattdean-digicatapult>']
-description = 'FRAME pallet template for defining custom runtime logic.'
+description = 'Pallet for tracking ML model submissions and aggregating them'
 edition = '2018'
 homepage = 'https://substrate.dev'
 license = 'Unlicense'
 name = 'ml-model-tracker'
 repository = 'https://github.com/mattdean-digicatapult/distributed-learning-demo'
-version = '2.0.0-rc5'
+version = '0.0.1'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -47,18 +47,6 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc5'
 version = '2.0.0-rc5'
 
-[dependencies.alt_serde]
-version = "1"
-default-features = false
-features = ["derive"]
-
-[dependencies.serde_json]
-version = "1"
-default-features = false
-git = "https://github.com/Xanewok/json"
-branch = "no-std"
-features = ["alloc"]
-
 [dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -68,8 +56,8 @@ version = '2.0.0-rc5'
 [features]
 default = ['std']
 std = [
-    'codec/std',
-    'frame-support/std',
+	'codec/std',
+	'frame-support/std',
 	'frame-system/std',
 	'sp-io/std',
 	'sp-runtime/std',
