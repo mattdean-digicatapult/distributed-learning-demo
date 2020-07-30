@@ -1,10 +1,10 @@
 [package]
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+authors = ['Matthew Dean']
 edition = '2018'
 homepage = 'https://substrate.dev'
 license = 'Unlicense'
-name = 'node-template-runtime'
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+name = 'distributed-learning-runtime'
+repository = 'https://github.com/mattdean-digicatapult/distributed-learning-demo'
 version = '2.0.0-rc5'
 
 [package.metadata.docs.rs]
@@ -142,17 +142,15 @@ package = 'frame-system'
 tag = 'v2.0.0-rc5'
 version = '2.0.0-rc5'
 
-[dependencies.template]
-default-features = false
-package = 'pallet-template'
-path = '../pallets/template'
-version = '2.0.0-rc5'
-
 [dependencies.ml-model-tracker]
 default-features = false
 package = 'ml-model-tracker'
 path = '../pallets/ml-model-tracker'
-version = '2.0.0-rc5'
+
+[dependencies.ml-model-tracker-runtime-api]
+default-features = false
+package = 'ml-model-tracker-runtime-api'
+path = '../pallets/ml-model-tracker/runtime-api'
 
 [dependencies.timestamp]
 default-features = false
@@ -200,5 +198,6 @@ std = [
     'system/std',
     'timestamp/std',
     'transaction-payment/std',
-    'template/std',
+    'ml-model-tracker/std',
+    'ml-model-tracker-runtime-api/std',
 ]

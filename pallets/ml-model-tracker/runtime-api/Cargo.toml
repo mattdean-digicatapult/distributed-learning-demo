@@ -1,0 +1,29 @@
+
+[package]
+name = "ml-model-tracker-runtime-api"
+version = "0.0.1"
+authors = ["Matthew Dean"]
+edition = "2018"
+license = 'Unlicense'
+
+[dependencies.sp-api]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc5'
+version = '2.0.0-rc5'
+
+[dependencies.sp-std]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc5'
+version = '2.0.0-rc5'
+
+[dev-dependencies]
+serde_json = { version = "1.0.41", default-features = false}
+
+[features]
+default = ["std"]
+std = [
+	"sp-api/std",
+  "sp-std/std",
+]

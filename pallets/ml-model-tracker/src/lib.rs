@@ -5,24 +5,9 @@
 /// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 
 use sp_std::prelude::*;
-use frame_support::{ensure, debug, decl_module, decl_storage, decl_event, decl_error, dispatch, traits::Get};
+use frame_support::{ensure, decl_module, decl_storage, decl_event, decl_error, dispatch, traits::Get};
 use frame_system::ensure_signed;
 use codec::{Encode, Decode};
-use sp_runtime::{
-	offchain as rt_offchain
-};
-use alt_serde::{Serialize};
-
-// Specifying serde path as `alt_serde`
-// ref: https://serde.rs/container-attrs.html#crate
-#[serde(crate = "alt_serde")]
-#[derive(Serialize, Encode, Decode, Default)]
-// struct ModelExport<BlockHash> {
-// 		block_hash: BlockHash,
-struct ModelExport {
-    model: Vec<u32>,
-}
-
 
 #[cfg(test)]
 mod mock;
@@ -30,11 +15,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub const HTTP_REMOTE_REQUEST: &str = "http://localhost:8080/update_model";
-pub const HTTP_HEADER_USER_AGENT: &str = "distributed-learning-node";
-pub const HTTP_HEADER_CONTENT_TYPE: &str = "application/json";
-pub const FETCH_TIMEOUT_PERIOD: u64 = 3000; // in milli-seconds
-pub const TEST_PAYLOAD: &[u8; 15] = b"{ \"wibble\": 1 }";
 pub const MODEL_LENGTH: usize = 2;
 
 /// Configure the pallet by specifying the parameters and types on which it depends.
@@ -106,8 +86,6 @@ decl_module! {
 
 			ensure!(model.len() == MODEL_LENGTH, Error::<T>::InvalidModel);
 
-			// let _foo = <ModelsByOwner<T>>::iter_values();
-
 			// Update storage.
 			<ModelsByOwner<T>>::insert(sender.clone(), Model {
 				owner: sender.clone(),
@@ -120,24 +98,11 @@ decl_module! {
 			// Return a successful DispatchResult
 			Ok(())
 		}
-
-		fn offchain_worker(block_number: T::BlockNumber) {
-			debug::info!("Entering off-chain workers");
-
-			// let block_hash = <frame_system::Module<T>>::block_hash(block_number);
-			let model = ModelExport {
-				// block_hash: block_hash,
-				model: Self::aggregate_model().unwrap()
-			};
-			let result = Self::send_model(model);
-
-			if let Err(e) = result { debug::error!("Error: {:?}", e); }
-		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	fn aggregate_model() -> Result<Vec<u32>, Error<T>> {
+	pub fn aggregate_model() -> Result<Vec<u32>, Error<T>> {
 		let mut result: Vec<u64> = vec![0; MODEL_LENGTH];
 		let mut count: u64 = 0;
 
@@ -148,50 +113,11 @@ impl<T: Trait> Module<T> {
     	}
 		}
 
-		let result = result.iter().map(| v | ((v / count) as u32)).collect::<Vec<u32>>();
-
-		Ok(result)
-	}
-
-	// fn send_model(model: ModelExport<T::Hash>) -> Result<Vec<u8>, Error<T>> {
-	fn send_model(model: ModelExport) -> Result<Vec<u8>, Error<T>> {
-		debug::info!("sending request to: {}", HTTP_REMOTE_REQUEST);
-
-		// Initiate an external HTTP GET request. This is using high-level wrappers from `sp_runtime`.
-
-		let body = serde_json::to_vec(&model).unwrap();
-
-		let request = rt_offchain::http::Request::post(HTTP_REMOTE_REQUEST, vec![body]);
-		// let request = rt_offchain::http::Request::get(HTTP_REMOTE_REQUEST);
-
-		// Keeping the offchain worker execution time reasonable, so limiting the call to be within 3s.
-		let timeout = sp_io::offchain::timestamp()
-			.add(rt_offchain::Duration::from_millis(FETCH_TIMEOUT_PERIOD));
-
-		// For github API request, we also need to specify `user-agent` in http request header.
-		//   See: https://developer.github.com/v3/#user-agent-required
-		let pending = request
-			.add_header("User-Agent", HTTP_HEADER_USER_AGENT)
-			.add_header("Content-Type", HTTP_HEADER_CONTENT_TYPE)
-			.deadline(timeout) // Setting the timeout time
-			.send() // Sending the request out by the host
-			.map_err(|_| <Error<T>>::HttpFetchingError)?;
-
-		// By default, the http request is async from the runtime perspective. So we are asking the
-		//   runtime to wait here.
-		// The returning value here is a `Result` of `Result`, so we are unwrapping it twice by two `?`
-		//   ref: https://substrate.dev/rustdocs/v2.0.0-rc3/sp_runtime/offchain/http/struct.PendingRequest.html#method.try_wait
-		let response = pending
-			.try_wait(timeout)
-			.map_err(|_| <Error<T>>::HttpFetchingError)?
-			.map_err(|_| <Error<T>>::HttpFetchingError)?;
-
-		if response.code != 200 {
-			debug::error!("Unexpected http request status code: {}", response.code);
-			return Err(<Error<T>>::HttpFetchingError);
+		if count == 0 {
+			Ok(vec![0u32; MODEL_LENGTH])
+		} else {
+			let result = result.iter().map(| v | ((v / count) as u32)).collect::<Vec<u32>>();
+			Ok(result)
 		}
-
-		// Next we fully read the response body and collect it to a vector of bytes.
-		Ok(response.body().collect::<Vec<u8>>())
 	}
 }

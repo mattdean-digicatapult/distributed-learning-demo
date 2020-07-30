@@ -38,9 +38,6 @@ pub use frame_support::{
 	},
 };
 
-/// Import the template pallet.
-pub use template;
-
 pub use ml_model_tracker;
 
 /// An index to a block.
@@ -94,8 +91,8 @@ pub mod opaque {
 }
 
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("node-template"),
-	impl_name: create_runtime_str!("node-template"),
+	spec_name: create_runtime_str!("distributed-learning"),
+	impl_name: create_runtime_str!("distributed-learning"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 1,
@@ -259,11 +256,6 @@ impl sudo::Trait for Runtime {
 	type Call = Call;
 }
 
-/// Configure the pallet template in pallets/template.
-impl template::Trait for Runtime {
-	type Event = Event;
-}
-
 impl ml_model_tracker::Trait for Runtime {
 	type Event = Event;
 }
@@ -283,8 +275,6 @@ construct_runtime!(
 		Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		// Include the custom logic from the template pallet in the runtime.
-		TemplateModule: template::{Module, Call, Storage, Event<T>},
 		MlModelTracker: ml_model_tracker::{Module, Call, Storage, Event<T>},
 	}
 );
@@ -424,4 +414,10 @@ impl_runtime_apis! {
 			None
 		}
 	}
+
+	impl ml_model_tracker_runtime_api::MlModelTrackerApi<Block> for Runtime {
+		fn get_aggregate_model() -> Vec<u32> {
+				MlModelTracker::aggregate_model().unwrap()
+		}
+}
 }
